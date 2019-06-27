@@ -116,6 +116,7 @@ def calc_access(geodataframe,
         on node_ids
 
     """
+    network.init_pois(num_categories=1, max_dist=distance, max_pois=1000)
     if precompute:
         network.precompute(distance)
 
