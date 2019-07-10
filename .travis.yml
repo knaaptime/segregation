@@ -30,6 +30,7 @@ before_install:
   - conda config --set channel_priority strict
   - conda create -y -q -n test-env python=$TRAVIS_PYTHON_VERSION
   - source activate test-env
+  - sudo -E apt install libcfitsio-dev -y
 
 install:
   - conda install --yes pip nose
