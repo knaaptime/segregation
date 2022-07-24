@@ -4,7 +4,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from libpysal.weights import Kernel
+from libpysal.weights import DistanceBand
 
 
 def compute_multiscalar_profile(
@@ -16,8 +16,9 @@ def compute_multiscalar_profile(
     distances=None,
     network=None,
     decay="linear",
-    function="triangular",
     precompute=True,
+    kernel=False,
+    kernel_function="quartic",
     **kwargs
 ):
     """Compute multiscalar segregation profile.
@@ -49,9 +50,6 @@ def compute_multiscalar_profile(
     decay : str (optional)
         decay type to be used in pandana accessibility calculation
         options are {'linear', 'exp', 'flat'}. The default is 'linear'.
-    function: 'str' (optional)
-        which weighting function should be passed to libpysal.weights.Kernel
-        must be one of: 'triangular','uniform','quadratic','quartic','gaussian'
     precompute: bool
         Whether the pandana.Network instance should precompute the range
         queries. This is True by default
@@ -82,16 +80,13 @@ def compute_multiscalar_profile(
         indices[0] = segregation_index(gdf, groups=groups, **kwargs).statistic
     elif group_pop_var:
         indices[0] = segregation_index(
-            gdf,
-            group_pop_var=group_pop_var,
-            total_pop_var=total_pop_var,
-            **kwargs
+            gdf, group_pop_var=group_pop_var, total_pop_var=total_pop_var, **kwargs
         ).statistic
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         if network:
-            if not gdf.crs.name == "WGS 84":
+            if not gdf.crs.equals(4326):
                 gdf = gdf.to_crs(epsg=4326)
             if precompute:
                 maxdist = max(distances)
@@ -123,17 +118,28 @@ def compute_multiscalar_profile(
                 indices[distance] = idx.statistic
         else:
             for distance in distances:
-                w = Kernel.from_dataframe(gdf, bandwidth=distance, function=function)
+                # w = DistanceBand.from_dataframe(gdf, threshold=distance, alpha=alpha, binary=False)
                 if group_pop_var:
                     idx = segregation_index(
                         gdf,
                         group_pop_var=group_pop_var,
                         total_pop_var=total_pop_var,
-                        w=w,
+                        decay=decay,
+                        distance=distance,
+                        kernel=kernel,
+                        kernel_function=kernel_function,
                         **kwargs
                     )
                 else:
-                    idx = segregation_index(gdf, groups, w=w, **kwargs)
+                    idx = segregation_index(
+                        gdf,
+                        groups,
+                        decay=decay,
+                        distance=distance,
+                        kernel=kernel,
+                        kernel_function=kernel_function,
+                        **kwargs
+                    )
                 indices[distance] = idx.statistic
         series = pd.Series(indices, name=str(type(idx)).split(".")[-1][:-2])
         series.index.name = "distance"

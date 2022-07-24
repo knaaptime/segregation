@@ -101,9 +101,10 @@ class Interaction(SingleGroupIndex, SpatialImplicitIndex):
         w=None,
         network=None,
         distance=None,
-        decay=None,
+        decay='linear',
         precompute=None,
-        function="triangular",
+        kernel=False,
+        kernel_function='quartic',
         **kwargs
     ):
         """Init."""
@@ -111,8 +112,8 @@ class Interaction(SingleGroupIndex, SpatialImplicitIndex):
         SingleGroupIndex.__init__(self, data, group_pop_var, total_pop_var)
         if any([w, network, distance]):
             SpatialImplicitIndex.__init__(
-                self, w, network, distance, decay, function, precompute
-            )
+                self, w, network, distance, decay, precompute, kernel, kernel_function
+                )
         aux = _interaction(self.data, self.group_pop_var, self.total_pop_var)
 
         self.statistic = aux[0]

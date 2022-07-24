@@ -171,9 +171,10 @@ class ModifiedDissim(SingleGroupIndex, SpatialImplicitIndex):
         w=None,
         network=None,
         distance=None,
-        decay="linear",
-        function="triangular",
+        decay='linear',
         precompute=None,
+        kernel=False,
+        kernel_function='quartic',
         n_jobs=-1,
         backend="threading",
         **kwargs
@@ -183,8 +184,8 @@ class ModifiedDissim(SingleGroupIndex, SpatialImplicitIndex):
         SingleGroupIndex.__init__(self, data, group_pop_var, total_pop_var)
         if any([w, network, distance]):
             SpatialImplicitIndex.__init__(
-                self, w, network, distance, decay, function, precompute
-            )
+                self, w=w, network=network, distance=distance, decay=decay, precompute=precompute, kernel=kernel, kernel_function=kernel_function
+                )
         aux = _modified_dissim(
             self.data,
             self.group_pop_var,

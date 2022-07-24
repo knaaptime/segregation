@@ -130,9 +130,10 @@ class BiasCorrectedDissim(SingleGroupIndex, SpatialImplicitIndex):
         w=None,
         network=None,
         distance=None,
-        decay=None,
+        decay='linear',
         precompute=None,
-        function="triangular",
+        kernel=False,
+        kernel_function='quartic',
         **kwargs
     ):
         """Init."""
@@ -140,7 +141,7 @@ class BiasCorrectedDissim(SingleGroupIndex, SpatialImplicitIndex):
         SingleGroupIndex.__init__(self, data, group_pop_var, total_pop_var)
         if any([w, network, distance]):
             SpatialImplicitIndex.__init__(
-                self, w, network, distance, decay, function, precompute
+                self, w, network, distance, decay, precompute, kernel, kernel_function
             )
         self.B = B
         aux = _bias_corrected_dissim(

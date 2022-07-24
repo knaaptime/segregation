@@ -1,13 +1,14 @@
 """Base classes for segregation indices."""
 
 from logging import warn
+from textwrap import fill
 import warnings
 
 import geopandas as gpd
 import libpysal
 import pandas as pd
 from libpysal.weights import lag_spatial
-from libpysal.weights.distance import Kernel
+from libpysal.weights.distance import Kernel, DistanceBand
 from libpysal.weights.util import attach_islands, fill_diagonal
 
 from .network import calc_access
@@ -120,14 +121,12 @@ class SingleGroupIndex:
             )
 
         if isinstance(data, gpd.GeoDataFrame):
-            data = _nan_handle(
-                data[[group_pop_var, total_pop_var, data.geometry.name]]
-            )
+            data = _nan_handle(data[[group_pop_var, total_pop_var, data.geometry.name]])
             data = data[[group_pop_var, total_pop_var, data.geometry.name]]
 
         else:
             data = _nan_handle(data[[group_pop_var, total_pop_var]])
-            data =data[[group_pop_var, total_pop_var]]
+            data = data[[group_pop_var, total_pop_var]]
 
         data["group_2_pop_var"] = data[total_pop_var] - data[group_pop_var]
 
@@ -185,8 +184,9 @@ class SpatialImplicitIndex:
         network,
         distance=1000,
         decay="linear",
-        function="triangular",
-        precompute=False,
+        precompute=True,
+        kernel=False,
+        kernel_function="quartic",
         **kwargs
     ):
         """Initialize spatially implicit index.
@@ -201,10 +201,7 @@ class SpatialImplicitIndex:
             Maximum distance (in units of geodataframe CRS) to consider the extent of the egohood
         decay : str
             type of decay function to apply (passed to `pandana`). Options include
-            {'linear', 'exponential', or 'flat'}
-        function : str
-            decay function to use in spatial weights object (passed to libpysal.weights.Kernel)
-            options = {'triangular','uniform','quadratic','quartic','gaussian'}
+            {'linear', 'exp', or 'flat'}
         precompute : bool
             Whether to precompute the pandana Network object
         """
@@ -213,7 +210,9 @@ class SpatialImplicitIndex:
             self._groups = self.groups
         elif self.index_type == "singlegroup":
             self._groups = [self.group_pop_var, self.total_pop_var, "group_2_pop_var"]
-
+        # map from natural exponential to power function
+        decay_to_alpha = {"linear": 0.368, "exp": 0.135}
+        alpha = decay_to_alpha[decay]
         if w and network:
             raise AttributeError(
                 "must pass either a pandana network or a pysal weights object, but not both"
@@ -231,19 +230,28 @@ class SpatialImplicitIndex:
             self.data = access
             self.network = network
         elif w:
-            self.data = _build_local_environment(
-                self.data, self._groups, w, function=function
-            )
+            self.data = _build_local_environment(self.data, self._groups, w=w)
             self.w = w
         elif distance and not network:
             self._original_data = self.data.copy()
             self.data = _build_local_environment(
-                self.data, self._groups, bandwidth=distance, function=function
+                self.data,
+                self._groups,
+                threshold=distance,
+                alpha=alpha,
+                kernel=kernel,
+                kernel_function=kernel_function,
             )
 
 
 def _build_local_environment(
-    data, groups, w=None, bandwidth=1000, function="triangular"
+    data,
+    groups,
+    w=None,
+    threshold=2000,
+    alpha=-0.5,
+    kernel=False,
+    kernel_function="quartic",
 ):
     """Convert observations into spatially-weighted sums.
 
@@ -268,12 +276,27 @@ def _build_local_environment(
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         if not w:
-            w = Kernel.from_dataframe(data, bandwidth=bandwidth, function=function)
-        new_data = []
+            new_data = []
+
+            if kernel:
+                w = Kernel.from_dataframe(
+                    data, bandwidth=threshold, function=kernel_function, fixed=False
+                )
+            else:
+                w = DistanceBand.from_dataframe(
+                    data,
+                    threshold=threshold,
+                    alpha=alpha,
+                    binary=False,
+                    distance_metric="euclidean",
+                    silence_warnings=True,
+                )
+
         w = fill_diagonal(w)
-        for y in data[groups]:
-            new_data.append(lag_spatial(w, data[y]))
-        new_data = pd.DataFrame(dict(zip(groups, new_data))).round(0)
+        for y in groups:
+            lag_value = lag_spatial(w, data[y])
+            new_data.append(lag_value)
+        new_data = pd.DataFrame(dict(zip(groups, new_data))).round(0).fillna(0)
         new_data = data.geometry.to_frame().join(new_data.reset_index())
 
         return new_data

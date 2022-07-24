@@ -110,7 +110,7 @@ def batch_compute_multigroup(gdf, groups, **kwargs):
 
 
 def batch_multiscalar_singlegroup(
-    gdf, distances, group_pop_var, total_pop_var, progress_bar=True, **kwargs
+    gdf, distances, group_pop_var, total_pop_var, decay='linear', progress_bar=True, **kwargs
 ):
     """Batch compute multiscalar profiles for single-group indices.
 
@@ -149,6 +149,7 @@ def batch_multiscalar_singlegroup(
                     gdf=gdf,
                     segregation_index=implicit_single_indices[idx],
                     distances=distances,
+                    decay=decay,
                     group_pop_var=group_pop_var,
                     total_pop_var=total_pop_var,
                     **kwargs
@@ -161,6 +162,7 @@ def batch_multiscalar_singlegroup(
                     gdf=gdf,
                     segregation_index=implicit_single_indices[idx],
                     distances=distances,
+                    decay=decay,
                     group_pop_var=group_pop_var,
                     total_pop_var=total_pop_var,
                     **kwargs
@@ -170,7 +172,7 @@ def batch_multiscalar_singlegroup(
         return df
 
 
-def batch_multiscalar_multigroup(gdf, distances, groups, progress_bar=True, **kwargs):
+def batch_multiscalar_multigroup(gdf, distances, groups, decay='linear', progress_bar=True, **kwargs):
     """Batch compute multiscalar profiles for multi-group indices.
 
     Parameters
@@ -205,6 +207,7 @@ def batch_multiscalar_multigroup(gdf, distances, groups, progress_bar=True, **kw
                     gdf=gdf,
                     segregation_index=implicit_multi_indices[idx],
                     distances=distances,
+                    decay=decay,
                     groups=groups,
                     **kwargs
                 )
@@ -217,6 +220,7 @@ def batch_multiscalar_multigroup(gdf, distances, groups, progress_bar=True, **kw
                     gdf=gdf,
                     segregation_index=implicit_multi_indices[idx],
                     distances=distances,
+                    decay=decay,
                     groups=groups,
                     **kwargs
                 )

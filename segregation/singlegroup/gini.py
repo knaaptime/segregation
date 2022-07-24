@@ -8,7 +8,6 @@ import numpy as np
 from .._base import SingleGroupIndex, SpatialImplicitIndex
 
 
-
 try:
     from numba import njit, jit, prange, boolean
 except (ImportError, ModuleNotFoundError):
@@ -28,7 +27,11 @@ except (ImportError, ModuleNotFoundError):
     prange = range
     boolean = bool
 
-@njit(parallel=True, fastmath=True,)
+
+@njit(
+    parallel=True,
+    fastmath=True,
+)
 def _gini_vecp(pi: np.ndarray, ti: np.ndarray):
     """Memory efficient calculation of Gini
 
@@ -41,11 +44,10 @@ def _gini_vecp(pi: np.ndarray, ti: np.ndarray):
 
     Returns
     ----------
-    
+
     implicit: float
              Gini coefficient
     """
-
 
     n = ti.shape[0]
     num = np.zeros(1)
@@ -53,13 +55,12 @@ def _gini_vecp(pi: np.ndarray, ti: np.ndarray):
     P = pi.sum() / T
     pi = np.where(ti == 0, 0, pi / ti)
     T = ti.sum()
-    for i in prange(n-1):
-        num += (ti[i] * ti[i+1:] * np.abs(pi[i] - pi[i+1:])).sum()
+    for i in prange(n - 1):
+        num += (ti[i] * ti[i + 1 :] * np.abs(pi[i] - pi[i + 1 :])).sum()
     num *= 2
-    den = (2 * T * T * P * (1-P))
+    den = 2 * T * T * P * (1 - P)
     return (num / den)[0]
 
-    
 
 def _gini_seg(data, group_pop_var, total_pop_var):
     """Calculate Gini segregation index.
@@ -107,6 +108,7 @@ def _gini_seg(data, group_pop_var, total_pop_var):
 
     return G, data
 
+
 class Gini(SingleGroupIndex, SpatialImplicitIndex):
     """Gini Index.
 
@@ -151,17 +153,16 @@ class Gini(SingleGroupIndex, SpatialImplicitIndex):
         w=None,
         network=None,
         distance=None,
-        decay=None,
-        function="triangular",
+        decay='linear',
         precompute=None,
+        kernel=False,
+        kernel_function='quartic',
         **kwargs
     ):
         """Init."""
         SingleGroupIndex.__init__(self, data, group_pop_var, total_pop_var)
         if any([w, network, distance]):
-            SpatialImplicitIndex.__init__(
-                self, w, network, distance, decay, function, precompute
-            )
+            SpatialImplicitIndex.__init__(self, w=w, network=network, distance=distance, decay=decay, precompute=precompute, kernel=kernel, kernel_function=kernel_function)
         aux = _gini_seg(self.data, self.group_pop_var, self.total_pop_var)
 
         self.statistic = aux[0]
